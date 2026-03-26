@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* prevent iOS from zooming on double-tap of grid cells */
+button {
+  touch-action: manipulation;
+}

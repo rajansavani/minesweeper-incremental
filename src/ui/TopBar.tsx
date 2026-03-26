@@ -1,0 +1,118 @@
+import { useEffect, useState } from "react";
+import { BOARD_PRESETS } from "../engine/constants";
+import { useGameStore } from "./hooks/useGameStore";
+
+// formats milliseconds into M:SS display
+function formatTime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+export function TopBar() {
+  const board = useGameStore((s) => s.board);
+  const startTimeMs = useGameStore((s) => s.startTimeMs);
+  const endTimeMs = useGameStore((s) => s.endTimeMs);
+  const flagMode = useGameStore((s) => s.flagMode);
+  const presetName = useGameStore((s) => s.presetName);
+  const newGame = useGameStore((s) => s.newGame);
+  const toggleFlagMode = useGameStore((s) => s.toggleFlagMode);
+
+  // live timer -> ticks every second while game is active
+  // we store "now" in local state so the component re-renders each tick
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    // only tick when game is in progress
+    if (!startTimeMs || endTimeMs) return;
+
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    // cleanup -> stop the interval when the game ends or component unmounts
+    return () => clearInterval(interval);
+  }, [startTimeMs, endTimeMs]);
+
+  // compute displayed time
+  let elapsed = 0;
+  if (startTimeMs) {
+    elapsed = (endTimeMs ?? now) - startTimeMs;
+  }
+
+  // remaining mines = total mines minus flags placed.
+  // can go negative if the player flags more cells than there are mines.
+  const remaining = board.totalMines - board.flaggedCount;
+
+  // status emoji for the new-game button
+  const statusEmoji = board.status === "won" ? "😎" : board.status === "lost" ? "💀" : "🙂";
+
+  return (
+    <div className="w-full max-w-[min(95vw,32rem)] mx-auto mb-3 flex flex-col gap-2">
+      {/* difficulty selector */}
+      <div className="flex justify-center gap-1">
+        {Object.entries(BOARD_PRESETS).map(([key, preset]) => (
+          <button
+            type="button"
+            key={key}
+            onClick={() => newGame(key)}
+            className={`
+              px-3 py-1 text-xs font-mono rounded transition-colors
+              ${
+                presetName === key
+                  ? "bg-amber-500/90 text-neutral-900"
+                  : "bg-neutral-700 text-neutral-300 hover:bg-neutral-600"
+              }
+            `}
+          >
+            {preset.name}
+          </button>
+        ))}
+      </div>
+
+      {/* mine count / face button / timer row */}
+      <div className="flex items-center justify-between bg-neutral-800 rounded px-3 py-2 border border-neutral-700/50">
+        {/* mine counter */}
+        <div
+          className="font-mono text-lg text-red-400 min-w-[3rem] text-left"
+          title="Remaining mines"
+        >
+          💣 {remaining}
+        </div>
+
+        {/* center: new game + flag mode */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => newGame()}
+            className="text-2xl hover:scale-110 transition-transform"
+            title="New game"
+          >
+            {statusEmoji}
+          </button>
+          <button
+            type="button"
+            onClick={toggleFlagMode}
+            className={`
+              px-2 py-1 text-xs font-mono rounded transition-colors
+              ${
+                flagMode
+                  ? "bg-amber-500/90 text-neutral-900"
+                  : "bg-neutral-700 text-neutral-400 hover:bg-neutral-600"
+              }
+            `}
+            title="Toggle flag mode (for mobile — tap to flag instead of reveal)"
+          >
+            🚩 {flagMode ? "ON" : "OFF"}
+          </button>
+        </div>
+
+        {/* timer */}
+        <div
+          className="font-mono text-lg text-neutral-300 min-w-[3rem] text-right"
+          title="Elapsed time"
+        >
+          ⏱ {formatTime(elapsed)}
+        </div>
+      </div>
+    </div>
+  );
+}

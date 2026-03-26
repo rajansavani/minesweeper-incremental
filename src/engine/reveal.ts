@@ -120,3 +120,46 @@ export function revealCell(
 
   return { board: newBoard, events };
 }
+
+// chord reveal -> if the player clicks a revealed numbered cell and has the correct number of flags around it, reveal all unflagged neighbors
+export function chordReveal(
+  board: Board,
+  row: number,
+  col: number,
+): { board: Board; events: EngineEvent[] } {
+  if (board.status !== "playing") return { board, events: [] };
+
+  const cell = board.cells[row][col];
+
+  // only works on revealed numbered cells
+  if (cell.state !== "revealed" || cell.adjacentMines === 0) {
+    return { board, events: [] };
+  }
+
+  // count adjacent flags
+  const neighbors = getNeighbors(row, col, board.rows, board.cols);
+  const adjacentFlags = neighbors.filter(
+    (n) => board.cells[n.row][n.col].state === "flagged",
+  ).length;
+
+  // only chord if flag count matches the number
+  if (adjacentFlags !== cell.adjacentMines) {
+    return { board, events: [] };
+  }
+
+  // reveal all hidden unflagged neighbors (may hit a mine!)
+  let current = board;
+  const allEvents: EngineEvent[] = [];
+
+  for (const n of neighbors) {
+    if (current.cells[n.row][n.col].state === "hidden") {
+      const result = revealCell(current, n.row, n.col);
+      current = result.board;
+      allEvents.push(...result.events);
+      // stop if we hit a mine
+      if (current.status === "lost") break;
+    }
+  }
+
+  return { board: current, events: allEvents };
+}

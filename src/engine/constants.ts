@@ -13,4 +13,4 @@ export const BOARD_PRESETS: Record<string, BoardPreset> = {
 };
 
 // default to intermediate (long enough to earn meaningful scrap, short enough that losing isn't too punishing)
-export const DEFAULT_BOARD_PRESET = "intermediate";
+export const DEFAULT_PRESET = BOARD_PRESETS.intermediate;
