@@ -20,6 +20,7 @@ export interface UpgradeDefinition {
   };
   currency: "scrap" | "intel"; // which currency to spend
   requiresPrestige?: number; // minimum prestige count to unlock
+  icon?: string; // optional art path for upgrade icon
 }
 
 // UPGRADE STATE

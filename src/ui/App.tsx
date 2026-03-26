@@ -1,5 +1,6 @@
 import { Grid } from "./Grid";
 import { useGameStore } from "./hooks/useGameStore";
+import { Shop } from "./Shop";
 import { TopBar } from "./TopBar";
 
 export default function App() {
@@ -41,7 +42,6 @@ export default function App() {
             </p>
             <p className="text-amber-400 font-bold">+{currentRun.scrapEarned} scrap earned</p>
           </div>
-
           <button
             type="button"
             onClick={() => newGame()}
@@ -52,7 +52,9 @@ export default function App() {
         </div>
       )}
 
-      <p className="mt-4 text-xs text-neutral-500 font-mono text-center">
+      <Shop />
+
+      <p className="mt-6 text-xs text-neutral-500 font-mono text-center">
         left-click to reveal · right-click to flag · 🚩 toggle for mobile
       </p>
     </div>

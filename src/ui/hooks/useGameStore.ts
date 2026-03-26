@@ -1,6 +1,6 @@
 import { create } from "zustand";
+import { autoRevealSafeCells } from "../../engine/assist";
 import { createBoard, placeMines } from "../../engine/board";
-import { BOARD_PRESETS, DEFAULT_PRESET } from "../../engine/constants";
 import { toggleFlag } from "../../engine/flag";
 import { chordReveal, revealCell } from "../../engine/reveal";
 import type { Board, EngineEvent } from "../../engine/types";
@@ -8,13 +8,13 @@ import { eventBus } from "../../meta/events";
 import { computeScrapReward } from "../../meta/scrap";
 import type { Currencies, RunStats, UpgradeState } from "../../meta/types";
 import { createDefaultRunStats } from "../../meta/types";
+import { BOARD_SIZE_LEVELS, getUpgradeCost, UPGRADES } from "../../meta/upgrades";
 
 // store is the bridge between the pure engine functions and the react UI
 // holds all game state and exposes actions that call engine functions, update state, and emit events for the meta layer
 interface GameStore {
   // engine state
   board: Board;
-  presetName: string;
   startTimeMs: number | null; // null until the first click
   endTimeMs: number | null; // null until game over
   flagMode: boolean; // mobile: if true, tapping a cell toggles flag instead of revealing
@@ -31,6 +31,7 @@ interface GameStore {
   chord: (row: number, col: number) => void;
   newGame: (presetName?: string) => void;
   toggleFlagMode: () => void;
+  buyUpgrade: (upgradeId: string) => void;
 }
 
 // generate a random seed for each new game
@@ -40,6 +41,13 @@ function randomSeed(): string {
   }
   // fallback to Date.now() if crypto.randomUUID is not available
   return `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+// looks up the board dimensions for the current board_size upgrade level
+function getBoardConfig(upgrades: UpgradeState) {
+  const level = upgrades.board_size ?? 0;
+  const clamped = Math.min(level, BOARD_SIZE_LEVELS.length - 1);
+  return BOARD_SIZE_LEVELS[clamped];
 }
 
 // process engine events: awards scrap, updates run stats, emits to event bus
@@ -107,10 +115,15 @@ function processEvents(
   };
 }
 
+// creates a fresh board based on current upgrade levels
+function createBoardFromUpgrades(upgrades: UpgradeState): Board {
+  const config = getBoardConfig(upgrades);
+  return createBoard(config.rows, config.cols, config.mines, randomSeed());
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   // engine state
-  board: createBoard(DEFAULT_PRESET.rows, DEFAULT_PRESET.cols, DEFAULT_PRESET.mines, randomSeed()),
-  presetName: "beginner",
+  board: createBoardFromUpgrades({}),
   startTimeMs: null,
   endTimeMs: null,
   flagMode: false,
@@ -130,12 +143,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!currentBoard.firstClickDone) {
       currentBoard = placeMines(currentBoard, row, col);
       set({ startTimeMs: Date.now() });
+
+      // apply "starting_reveals" (recon drone) upgrade
+      const startingRevealsLevel = upgrades.starting_reveals ?? 0;
+      if (startingRevealsLevel > 0) {
+        const count = 3 + (startingRevealsLevel - 1) * 2;
+        const autoResult = autoRevealSafeCells(currentBoard, count);
+        currentBoard = autoResult.board;
+
+        // process auto-reveal events for scrap
+        const autoMeta = processEvents(
+          autoResult.events,
+          autoResult.board,
+          currencies,
+          upgrades,
+          currentRun,
+        );
+        // update currencies/run before the player's actual click
+        set({
+          currencies: autoMeta.currencies,
+          currentRun: autoMeta.currentRun,
+        });
+      }
     }
 
     const result = revealCell(currentBoard, row, col);
     const endTimeMs = result.board.status !== "playing" ? Date.now() : get().endTimeMs;
 
-    const meta = processEvents(result.events, result.board, currencies, upgrades, currentRun);
+    // re-read currencies / currentRun in case starting reveals updated them
+    const meta = processEvents(
+      result.events,
+      result.board,
+      get().currencies,
+      upgrades,
+      get().currentRun,
+    );
 
     set({
       board: result.board,
@@ -177,12 +219,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  newGame: (presetName) => {
-    const name = presetName ?? get().presetName;
-    const preset = BOARD_PRESETS[name] ?? DEFAULT_PRESET;
+  newGame: () => {
+    const { upgrades } = get();
     set({
-      board: createBoard(preset.rows, preset.cols, preset.mines, randomSeed()),
-      presetName: name,
+      board: createBoardFromUpgrades(upgrades),
       startTimeMs: null,
       endTimeMs: null,
       flagMode: false,
@@ -192,5 +232,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   toggleFlagMode: () => {
     set((state) => ({ flagMode: !state.flagMode }));
+  },
+
+  buyUpgrade: (upgradeId) => {
+    const { currencies, upgrades } = get();
+    const def = UPGRADES.find((u) => u.id === upgradeId);
+    if (!def) return;
+
+    const currentLevel = upgrades[upgradeId] ?? 0;
+    if (currentLevel >= def.maxLevel) return; // already maxed
+
+    // check affordability
+    const cost = getUpgradeCost(def, currentLevel);
+    if (def.currency === "scrap" && currencies.scrap < cost) return;
+    if (def.currency === "intel" && currencies.intel < cost) return;
+
+    // deduct cost
+    const newCurrencies = { ...currencies };
+    if (def.currency === "scrap") {
+      newCurrencies.scrap -= cost;
+    } else {
+      newCurrencies.intel -= cost;
+    }
+
+    // increase upgrade level
+    const newUpgrades = { ...upgrades, [upgradeId]: currentLevel + 1 };
+
+    set({ currencies: newCurrencies, upgrades: newUpgrades });
+
+    // if board_size was upgraded, the next game will use the new size
+    // so we don't resize the current board midgame
   },
 }));

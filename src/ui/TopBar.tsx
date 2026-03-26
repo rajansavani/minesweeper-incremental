@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { BOARD_PRESETS } from "../engine/constants";
 import { useGameStore } from "./hooks/useGameStore";
 
 // formats milliseconds into M:SS display
@@ -22,7 +21,6 @@ export function TopBar() {
   const startTimeMs = useGameStore((s) => s.startTimeMs);
   const endTimeMs = useGameStore((s) => s.endTimeMs);
   const flagMode = useGameStore((s) => s.flagMode);
-  const presetName = useGameStore((s) => s.presetName);
   const currencies = useGameStore((s) => s.currencies);
   const newGame = useGameStore((s) => s.newGame);
   const toggleFlagMode = useGameStore((s) => s.toggleFlagMode);
@@ -55,35 +53,17 @@ export function TopBar() {
 
   return (
     <div className="w-full max-w-[min(95vw,32rem)] mx-auto mb-3 flex flex-col gap-2">
-      {/* scrap display */}
+      {/* scrap + board info */}
       <div className="flex items-center justify-between bg-neutral-800/60 rounded px-3 py-1.5 border border-neutral-700/30 text-sm font-mono">
         <div className="text-amber-400" title="Current scrap">
           ⚙ {formatNumber(currencies.scrap)} scrap
         </div>
+        <div className="text-neutral-500 text-xs" title="Board size">
+          {board.rows}×{board.cols}
+        </div>
         <div className="text-neutral-500" title="Lifetime scrap (never resets)">
           Σ {formatNumber(currencies.lifetimeScrap)}
         </div>
-      </div>
-
-      {/* difficulty selector */}
-      <div className="flex justify-center gap-1">
-        {Object.entries(BOARD_PRESETS).map(([key, preset]) => (
-          <button
-            type="button"
-            key={key}
-            onClick={() => newGame(key)}
-            className={`
-              px-3 py-1 text-xs font-mono rounded transition-colors
-              ${
-                presetName === key
-                  ? "bg-amber-500/90 text-neutral-900"
-                  : "bg-neutral-700 text-neutral-300 hover:bg-neutral-600"
-              }
-            `}
-          >
-            {preset.name}
-          </button>
-        ))}
       </div>
 
       {/* mine count / face / timer row */}

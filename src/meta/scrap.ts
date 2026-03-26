@@ -41,6 +41,19 @@ export function intelScrapMultiplier(upgrades: UpgradeState): number {
   return 1 + level * 0.1;
 }
 
+// "board_size" upgrade: bigger boards give proportionally more scrap
+// calculated as board area / beginner area (a 15x15 board gives 225/81 = ~2.78x scrap)
+export function boardSizeMultiplier(board?: Board): number {
+  if (!board) return 1;
+  const beginnerArea = 9 * 9; // 81 cells
+  return (board.rows * board.cols) / beginnerArea;
+}
+
+// "loss_shield" upgrade: keep a % of what the win bonus would have been
+export function lossShieldPercent(upgrades: UpgradeState): number {
+  return getLevel(upgrades, "loss_shield") * 0.25;
+}
+
 // main scrap computation
 
 // computes how much scrap a single engine event is worth
@@ -51,7 +64,8 @@ export function computeScrapReward(
   upgrades: UpgradeState,
   board?: Board,
 ): number {
-  const gMulti = globalMultiplier(upgrades) * intelScrapMultiplier(upgrades);
+  const gMulti =
+    globalMultiplier(upgrades) * intelScrapMultiplier(upgrades) * boardSizeMultiplier(board);
 
   switch (event.type) {
     case "CELL_REVEALED": {
@@ -82,9 +96,16 @@ export function computeScrapReward(
 
     case "BOARD_LOST": {
       // half credit for correct flags on loss
+      const shieldPct = lossShieldPercent(upgrades);
+      const mineCount = board?.totalMines ?? 0;
+      const wouldBeWinBonus = mineCount * 5 * winBonusMultiplier(upgrades);
+      const shieldedBonus = wouldBeWinBonus * shieldPct;
+
       const correctFlags = countCorrectFlags(board);
       const flagReward = correctFlags * (3 + flagBonusPerFlag(upgrades));
-      return Math.floor(flagReward * 0.5 * gMulti);
+      const halfFlagReward = flagReward * 0.5;
+
+      return Math.floor((shieldedBonus + halfFlagReward) * gMulti);
     }
 
     // no scrap for these events
