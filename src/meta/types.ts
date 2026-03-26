@@ -41,6 +41,7 @@ export interface CooldownAbility {
 // tracks for the current board
 export interface RunStats {
   cellsRevealed: number;
+  floodFillCells: number; // cells revealed via flood fill (separate for scrap calc)
   flagsPlaced: number;
   flagsCorrect: number; // validated after win
   startTimeMs: number;
@@ -59,6 +60,39 @@ export interface MetaState {
   settings: {
     showTimer: boolean;
     showMineCount: boolean;
-    enableToolTips: boolean;
+    enableTooltips: boolean;
+  };
+}
+
+// DEFAULT STARTING STATE
+export function createDefaultMetaState(): MetaState {
+  return {
+    currencies: {
+      scrap: 0,
+      lifetimeScrap: 0,
+      intel: 0,
+    },
+    upgrades: {},
+    cooldowns: [],
+    currentRun: createDefaultRunStats(),
+    prestigeCount: 0,
+    settings: {
+      showTimer: true,
+      showMineCount: true,
+      enableTooltips: true,
+    },
+  };
+}
+
+export function createDefaultRunStats(): RunStats {
+  return {
+    cellsRevealed: 0,
+    floodFillCells: 0,
+    flagsPlaced: 0,
+    flagsCorrect: 0,
+    startTimeMs: 0,
+    endTimeMs: null,
+    scrapEarned: 0,
+    won: null,
   };
 }

@@ -12,5 +12,5 @@ export const BOARD_PRESETS: Record<string, BoardPreset> = {
   expert: { name: "Expert", rows: 16, cols: 30, mines: 99 },
 };
 
-// default to intermediate (long enough to earn meaningful scrap, short enough that losing isn't too punishing)
-export const DEFAULT_PRESET = BOARD_PRESETS.intermediate;
+// default to beginner (player can upgrade and expand their board later)
+export const DEFAULT_PRESET = BOARD_PRESETS.beginner;

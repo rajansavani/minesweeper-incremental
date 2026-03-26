@@ -10,12 +10,20 @@ function formatTime(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+// formats large numbers with K/M suffixes for readability.
+export function formatNumber(n: number): string {
+  if (n < 1000) return n.toString();
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`;
+  return `${(n / 1_000_000).toFixed(1)}M`;
+}
+
 export function TopBar() {
   const board = useGameStore((s) => s.board);
   const startTimeMs = useGameStore((s) => s.startTimeMs);
   const endTimeMs = useGameStore((s) => s.endTimeMs);
   const flagMode = useGameStore((s) => s.flagMode);
   const presetName = useGameStore((s) => s.presetName);
+  const currencies = useGameStore((s) => s.currencies);
   const newGame = useGameStore((s) => s.newGame);
   const toggleFlagMode = useGameStore((s) => s.toggleFlagMode);
 
@@ -47,6 +55,16 @@ export function TopBar() {
 
   return (
     <div className="w-full max-w-[min(95vw,32rem)] mx-auto mb-3 flex flex-col gap-2">
+      {/* scrap display */}
+      <div className="flex items-center justify-between bg-neutral-800/60 rounded px-3 py-1.5 border border-neutral-700/30 text-sm font-mono">
+        <div className="text-amber-400" title="Current scrap">
+          ⚙ {formatNumber(currencies.scrap)} scrap
+        </div>
+        <div className="text-neutral-500" title="Lifetime scrap (never resets)">
+          Σ {formatNumber(currencies.lifetimeScrap)}
+        </div>
+      </div>
+
       {/* difficulty selector */}
       <div className="flex justify-center gap-1">
         {Object.entries(BOARD_PRESETS).map(([key, preset]) => (
@@ -68,9 +86,8 @@ export function TopBar() {
         ))}
       </div>
 
-      {/* mine count / face button / timer row */}
+      {/* mine count / face / timer row */}
       <div className="flex items-center justify-between bg-neutral-800 rounded px-3 py-2 border border-neutral-700/50">
-        {/* mine counter */}
         <div
           className="font-mono text-lg text-red-400 min-w-[3rem] text-left"
           title="Remaining mines"
@@ -99,7 +116,7 @@ export function TopBar() {
                   : "bg-neutral-700 text-neutral-400 hover:bg-neutral-600"
               }
             `}
-            title="Toggle flag mode (for mobile — tap to flag instead of reveal)"
+            title="Toggle flag mode (for mobile)"
           >
             🚩 {flagMode ? "ON" : "OFF"}
           </button>

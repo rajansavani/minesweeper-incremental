@@ -3,17 +3,27 @@ import { createBoard, placeMines } from "../../engine/board";
 import { BOARD_PRESETS, DEFAULT_PRESET } from "../../engine/constants";
 import { toggleFlag } from "../../engine/flag";
 import { chordReveal, revealCell } from "../../engine/reveal";
-import type { Board } from "../../engine/types";
+import type { Board, EngineEvent } from "../../engine/types";
+import { eventBus } from "../../meta/events";
+import { computeScrapReward } from "../../meta/scrap";
+import type { Currencies, RunStats, UpgradeState } from "../../meta/types";
+import { createDefaultRunStats } from "../../meta/types";
 
 // store is the bridge between the pure engine functions and the react UI
 // holds all game state and exposes actions that call engine functions, update state, and emit events for the meta layer
 interface GameStore {
-  // state
+  // engine state
   board: Board;
   presetName: string;
   startTimeMs: number | null; // null until the first click
   endTimeMs: number | null; // null until game over
   flagMode: boolean; // mobile: if true, tapping a cell toggles flag instead of revealing
+
+  // meta state
+  currencies: Currencies;
+  upgrades: UpgradeState;
+  currentRun: RunStats;
+  prestigeCount: number;
 
   // actions
   reveal: (row: number, col: number) => void;
@@ -32,58 +42,139 @@ function randomSeed(): string {
   return `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// process engine events: awards scrap, updates run stats, emits to event bus
+// called after every engine action and bridges the pure engine to the meta layer
+function processEvents(
+  events: EngineEvent[],
+  board: Board,
+  currencies: Currencies,
+  upgrades: UpgradeState,
+  currentRun: RunStats,
+): { currencies: Currencies; currentRun: RunStats } {
+  let newScrap = currencies.scrap;
+  let newLifetimeScrap = currencies.lifetimeScrap;
+  let runScrapEarned = currentRun.scrapEarned;
+  let cellsRevealed = currentRun.cellsRevealed;
+  let floodFillCells = currentRun.floodFillCells;
+  let flagsPlaced = currentRun.flagsPlaced;
+  let won = currentRun.won;
+
+  for (const event of events) {
+    // compute scrap for this event
+    const reward = computeScrapReward(event, upgrades, board);
+    newScrap += reward;
+    newLifetimeScrap += reward;
+    runScrapEarned += reward;
+
+    // update run stats based on event type
+    switch (event.type) {
+      case "CELL_REVEALED":
+        cellsRevealed++;
+        break;
+      case "FLOOD_FILL":
+        cellsRevealed += event.cellsRevealed;
+        floodFillCells += event.cellsRevealed;
+        break;
+      case "FLAG_PLACED":
+        flagsPlaced++;
+        break;
+      case "BOARD_WON":
+        won = true;
+        break;
+      case "BOARD_LOST":
+        won = false;
+        break;
+    }
+
+    // emit to the event bus so other systems (achievements, etc.) can listen
+    eventBus.emit(event);
+  }
+
+  return {
+    currencies: {
+      ...currencies,
+      scrap: newScrap,
+      lifetimeScrap: newLifetimeScrap,
+    },
+    currentRun: {
+      ...currentRun,
+      cellsRevealed,
+      floodFillCells,
+      flagsPlaced,
+      scrapEarned: runScrapEarned,
+      won,
+    },
+  };
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
+  // engine state
   board: createBoard(DEFAULT_PRESET.rows, DEFAULT_PRESET.cols, DEFAULT_PRESET.mines, randomSeed()),
-  presetName: "intermediate",
+  presetName: "beginner",
   startTimeMs: null,
   endTimeMs: null,
   flagMode: false,
 
+  // meta state
+  currencies: { scrap: 0, lifetimeScrap: 0, intel: 0 },
+  upgrades: {},
+  currentRun: createDefaultRunStats(),
+  prestigeCount: 0,
+
   reveal: (row, col) => {
-    const { board } = get();
+    const { board, currencies, upgrades, currentRun } = get();
     if (board.status !== "playing") return;
 
     let currentBoard = board;
 
-    // on first click place mines (guaranteeing this cell is safe), then start the timer
     if (!currentBoard.firstClickDone) {
       currentBoard = placeMines(currentBoard, row, col);
       set({ startTimeMs: Date.now() });
     }
 
     const result = revealCell(currentBoard, row, col);
-
-    // if the game just ended, record the end time
     const endTimeMs = result.board.status !== "playing" ? Date.now() : get().endTimeMs;
 
-    set({ board: result.board, endTimeMs });
+    const meta = processEvents(result.events, result.board, currencies, upgrades, currentRun);
 
-    // TODO: emit events to the meta layer for scrap earning
-    void result.events;
+    set({
+      board: result.board,
+      endTimeMs,
+      currencies: meta.currencies,
+      currentRun: meta.currentRun,
+    });
   },
 
   flag: (row, col) => {
-    const { board } = get();
+    const { board, currencies, upgrades, currentRun } = get();
     if (board.status !== "playing") return;
-    // can't flag before first click (no mines to flag yet)
     if (!board.firstClickDone) return;
 
     const result = toggleFlag(board, row, col);
-    set({ board: result.board });
+    const meta = processEvents(result.events, result.board, currencies, upgrades, currentRun);
 
-    // TODO: emit flag events
-    void result.events;
+    set({
+      board: result.board,
+      currencies: meta.currencies,
+      currentRun: meta.currentRun,
+    });
   },
 
   chord: (row, col) => {
-    const { board } = get();
+    const { board, currencies, upgrades, currentRun } = get();
     if (board.status !== "playing") return;
 
     const result = chordReveal(board, row, col);
     const endTimeMs = result.board.status !== "playing" ? Date.now() : get().endTimeMs;
-    set({ board: result.board, endTimeMs });
 
-    void result.events;
+    const meta = processEvents(result.events, result.board, currencies, upgrades, currentRun);
+
+    set({
+      board: result.board,
+      endTimeMs,
+      currencies: meta.currencies,
+      currentRun: meta.currentRun,
+    });
   },
 
   newGame: (presetName) => {
@@ -95,6 +186,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       startTimeMs: null,
       endTimeMs: null,
       flagMode: false,
+      currentRun: createDefaultRunStats(),
     });
   },
 
