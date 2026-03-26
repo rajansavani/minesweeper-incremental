@@ -1,9 +1,21 @@
-name: CI
+name: CI + Deploy
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+# grant the workflow permission to publish to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# only one deploy at a time
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -21,3 +33,20 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
+
+      # upload the dist/ folder so the deploy job can use it
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        with:
+          path: dist
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
