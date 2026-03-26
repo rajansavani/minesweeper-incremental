@@ -3,7 +3,7 @@ import { createBoard, placeMines } from "../../engine/board";
 import { BOARD_PRESETS, DEFAULT_PRESET } from "../../engine/constants";
 import { toggleFlag } from "../../engine/flag";
 import { chordReveal, revealCell } from "../../engine/reveal";
-import type { Board, EngineEvent } from "../../engine/types";
+import type { Board } from "../../engine/types";
 
 // store is the bridge between the pure engine functions and the react UI
 // holds all game state and exposes actions that call engine functions, update state, and emit events for the meta layer
