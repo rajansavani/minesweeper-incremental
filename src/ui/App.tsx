@@ -1,5 +1,6 @@
 import { Grid } from "./Grid";
 import { useGameStore } from "./hooks/useGameStore";
+import { PrestigePanel } from "./PrestigePanel";
 import { Shop } from "./Shop";
 import { TopBar } from "./TopBar";
 
@@ -7,6 +8,8 @@ export default function App() {
   const status = useGameStore((s) => s.board.status);
   const currentRun = useGameStore((s) => s.currentRun);
   const newGame = useGameStore((s) => s.newGame);
+  const prestigeCount = useGameStore((s) => s.prestigeCount);
+  const lifetimeScrap = useGameStore((s) => s.currencies.lifetimeScrap);
 
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100 flex flex-col items-center px-4 py-6">
@@ -19,7 +22,7 @@ export default function App() {
       <TopBar />
       <Grid />
 
-      {/* win/loss banner with run stats */}
+      {/* win/loss banner */}
       {status !== "playing" && (
         <div
           className={`
@@ -53,6 +56,9 @@ export default function App() {
       )}
 
       <Shop />
+
+      {/* show prestige panel after first prestige or when player has enough scrap */}
+      {(prestigeCount > 0 || lifetimeScrap >= 500) && <PrestigePanel />}
 
       <p className="mt-6 text-xs text-neutral-500 font-mono text-center">
         left-click to reveal · right-click to flag · 🚩 toggle for mobile

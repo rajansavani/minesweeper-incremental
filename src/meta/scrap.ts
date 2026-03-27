@@ -45,7 +45,7 @@ export function intelScrapMultiplier(upgrades: UpgradeState): number {
 // calculated as board area / beginner area (a 15x15 board gives 225/81 = ~2.78x scrap)
 export function boardSizeMultiplier(board?: Board): number {
   if (!board) return 1;
-  const beginnerArea = 9 * 9; // 81 cells
+  const beginnerArea = 81;
   return (board.rows * board.cols) / beginnerArea;
 }
 
@@ -95,7 +95,7 @@ export function computeScrapReward(
     }
 
     case "BOARD_LOST": {
-      // half credit for correct flags on loss
+      // half credit for correct flags on loss and apply loss shield
       const shieldPct = lossShieldPercent(upgrades);
       const mineCount = board?.totalMines ?? 0;
       const wouldBeWinBonus = mineCount * 5 * winBonusMultiplier(upgrades);

@@ -13,17 +13,14 @@ export function Shop() {
 
       <div className="grid gap-2">
         {UPGRADES.filter((def) => {
-          // hide intel-currency upgrades until player has prestiged
-          if (def.currency === "intel" && def.requiresPrestige) {
-            return false;
-          }
-          return true;
+          // only show scrap-costed upgrades here
+          // intel upgrades are shown in the PrestigePanel
+          return def.currency === "scrap";
         }).map((def) => {
           const currentLevel = upgrades[def.id] ?? 0;
           const isMaxed = currentLevel >= def.maxLevel;
-          const cost = isMaxed ? 0 : getUpgradeCost(def, currentLevel);
-          const canAfford =
-            def.currency === "scrap" ? currencies.scrap >= cost : currencies.intel >= cost;
+          const cost = isMaxed ? 0 : getUpgradeCost(def, currentLevel, upgrades);
+          const canAfford = currencies.scrap >= cost;
           const canBuy = !isMaxed && canAfford;
 
           return (

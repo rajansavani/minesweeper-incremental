@@ -3,6 +3,7 @@ export interface Currencies {
   scrap: number; // primary currency, earned per-run
   lifetimeScrap: number; // total scrap ever earned (never resets, used for prestige calc)
   intel: number; // prestige currency, persists across resets
+  totalIntelEarned: number; // total intel claimed via prestige
 }
 
 // UPGRATE DEFINITIONS
@@ -72,6 +73,7 @@ export function createDefaultMetaState(): MetaState {
       scrap: 0,
       lifetimeScrap: 0,
       intel: 0,
+      totalIntelEarned: 0,
     },
     upgrades: {},
     cooldowns: [],

@@ -5,6 +5,7 @@ import { toggleFlag } from "../../engine/flag";
 import { chordReveal, revealCell } from "../../engine/reveal";
 import type { Board, EngineEvent } from "../../engine/types";
 import { eventBus } from "../../meta/events";
+import { performPrestige } from "../../meta/prestige";
 import { computeScrapReward } from "../../meta/scrap";
 import type { Currencies, RunStats, UpgradeState } from "../../meta/types";
 import { createDefaultRunStats } from "../../meta/types";
@@ -32,6 +33,7 @@ interface GameStore {
   newGame: (presetName?: string) => void;
   toggleFlagMode: () => void;
   buyUpgrade: (upgradeId: string) => void;
+  prestige: () => void;
 }
 
 // generate a random seed for each new game
@@ -48,6 +50,12 @@ function getBoardConfig(upgrades: UpgradeState) {
   const level = upgrades.board_size ?? 0;
   const clamped = Math.min(level, BOARD_SIZE_LEVELS.length - 1);
   return BOARD_SIZE_LEVELS[clamped];
+}
+
+// computes starting scrap from the "supply cache" intel upgrade
+function getStartingScrap(upgrades: UpgradeState): number {
+  const level = upgrades.intel_starting_scrap ?? 0;
+  return level * 50; // 50 scrap per level
 }
 
 // process engine events: awards scrap, updates run stats, emits to event bus
@@ -129,7 +137,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   flagMode: false,
 
   // meta state
-  currencies: { scrap: 0, lifetimeScrap: 0, intel: 0 },
+  currencies: { scrap: 0, lifetimeScrap: 0, intel: 0, totalIntelEarned: 0 },
   upgrades: {},
   currentRun: createDefaultRunStats(),
   prestigeCount: 0,
@@ -243,7 +251,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (currentLevel >= def.maxLevel) return; // already maxed
 
     // check affordability
-    const cost = getUpgradeCost(def, currentLevel);
+    const cost = getUpgradeCost(def, currentLevel, upgrades);
     if (def.currency === "scrap" && currencies.scrap < cost) return;
     if (def.currency === "intel" && currencies.intel < cost) return;
 
@@ -262,5 +270,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // if board_size was upgraded, the next game will use the new size
     // so we don't resize the current board midgame
+  },
+
+  prestige: () => {
+    const { currencies, upgrades, prestigeCount } = get();
+    const result = performPrestige(currencies, upgrades, prestigeCount);
+
+    // if prestige didn't happen, do nothing
+    if (result.prestigeCount === prestigeCount) return;
+
+    // apply starting scrap from supply cache intel upgrade
+    const startingScrap = getStartingScrap(result.upgrades);
+    result.currencies.scrap = startingScrap;
+
+    set({
+      currencies: result.currencies,
+      upgrades: result.upgrades,
+      prestigeCount: result.prestigeCount,
+      // start a fresh board with the new upgrade set
+      board: createBoardFromUpgrades(result.upgrades),
+      startTimeMs: null,
+      endTimeMs: null,
+      flagMode: false,
+      currentRun: createDefaultRunStats(),
+    });
   },
 }));

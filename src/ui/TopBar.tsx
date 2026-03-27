@@ -9,7 +9,7 @@ function formatTime(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-// formats large numbers with K/M suffixes for readability.
+// formats large numbers: 1234 → "1.2K", 1234567 → "1.2M"
 export function formatNumber(n: number): string {
   if (n < 1000) return n.toString();
   if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`;
@@ -44,11 +44,7 @@ export function TopBar() {
     elapsed = (endTimeMs ?? now) - startTimeMs;
   }
 
-  // remaining mines = total mines minus flags placed.
-  // can go negative if the player flags more cells than there are mines.
   const remaining = board.totalMines - board.flaggedCount;
-
-  // status emoji for the new-game button
   const statusEmoji = board.status === "won" ? "😎" : board.status === "lost" ? "💀" : "🙂";
 
   return (
@@ -58,6 +54,11 @@ export function TopBar() {
         <div className="text-amber-400" title="Current scrap">
           ⚙ {formatNumber(currencies.scrap)} scrap
         </div>
+        {currencies.intel > 0 && (
+          <div className="text-cyan-400 text-sm" title="Intel (prestige currency)">
+            ⬡ {formatNumber(currencies.intel)}
+          </div>
+        )}
         <div className="text-neutral-500 text-xs" title="Board size">
           {board.rows}×{board.cols}
         </div>
