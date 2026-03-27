@@ -1,73 +1,34 @@
-# React + TypeScript + Vite
+# minesweeper incremental
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> What if minesweeper had a prestige button?
 
-Currently, two official plugins are available:
+[▶ Play it here](https://rajansavani.github.io/minesweeper-incremental/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What is this
 
-## React Compiler
+Currently this game is classic minesweeper with an incremental layer on top: earn scrap, buy upgrades, prestige, repeat. It's a personal project I've been working on to feed my own dopamine addiction while learning TypeScript and game dev. Please note that the balance is currently a complete mess and progression will be completely revamped. If you have feedback or ideas, I would love to hear it!
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## How to play
 
-## Expanding the ESLint configuration
+- Left-click to reveal, right-click to flag
+- Earn scrap → buy upgrades → prestige for intel → profit 😎
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Status
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+v0.1.0 — Minesweeper is fully playable with generic upgrades and one basic reset layer
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Roadmap
+- [ ] Uncapped upgrades and progression rework
+- [ ] Rebalancing to reward actively solving puzzles
+- [ ] New reset layers beyond intel
+- [ ] Achievements
+- [ ] Daily challenges + leaderboards
+- [ ] Custom art
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Tech
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+React · TypeScript · Vite · Zustand · Tailwind · Vitest
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+built by [rajan](https://github.com/rajansavani) · [feedback welcome](https://github.com/rajansavani/minesweeper-incremental/issues)

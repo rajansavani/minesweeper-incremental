@@ -22,7 +22,6 @@ export function TopBar() {
   const endTimeMs = useGameStore((s) => s.endTimeMs);
   const flagMode = useGameStore((s) => s.flagMode);
   const currencies = useGameStore((s) => s.currencies);
-  const newGame = useGameStore((s) => s.newGame);
   const toggleFlagMode = useGameStore((s) => s.toggleFlagMode);
 
   // live timer -> ticks every second while game is active
@@ -45,11 +44,10 @@ export function TopBar() {
   }
 
   const remaining = board.totalMines - board.flaggedCount;
-  const statusEmoji = board.status === "won" ? "😎" : board.status === "lost" ? "💀" : "🙂";
 
   return (
     <div className="w-full max-w-[min(95vw,32rem)] mx-auto mb-3 flex flex-col gap-2">
-      {/* scrap + board info */}
+      {/* scrap + intel + board info */}
       <div className="flex items-center justify-between bg-neutral-800/60 rounded px-3 py-1.5 border border-neutral-700/30 text-sm font-mono">
         <div className="text-amber-400" title="Current scrap">
           ⚙ {formatNumber(currencies.scrap)} scrap
@@ -67,7 +65,7 @@ export function TopBar() {
         </div>
       </div>
 
-      {/* mine count / face / timer row */}
+      {/* mine count / timer row */}
       <div className="flex items-center justify-between bg-neutral-800 rounded px-3 py-2 border border-neutral-700/50">
         <div
           className="font-mono text-lg text-red-400 min-w-[3rem] text-left"
@@ -76,16 +74,7 @@ export function TopBar() {
           💣 {remaining}
         </div>
 
-        {/* center: new game + flag mode */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => newGame()}
-            className="text-2xl hover:scale-110 transition-transform"
-            title="New game"
-          >
-            {statusEmoji}
-          </button>
           <button
             type="button"
             onClick={toggleFlagMode}
