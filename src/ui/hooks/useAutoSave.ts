@@ -12,15 +12,19 @@ export function useAutoSave() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // periodic auto-save every 30 seconds
-    const interval = setInterval(() => {
+    const doSave = () => {
       const state = useGameStore.getState();
-      const success = saveGame({
+      return saveGame({
         currencies: state.currencies,
         upgrades: state.upgrades,
         prestigeCount: state.prestigeCount,
+        level: state.level,
+        xp: state.xp,
       });
+    };
 
+    const interval = setInterval(() => {
+      const success = doSave();
       if (success) {
         setShowSaved(true);
         // clear previous timeout if save happens again quickly
@@ -29,16 +33,7 @@ export function useAutoSave() {
       }
     }, AUTO_SAVE_INTERVAL_MS);
 
-    // save on tab close / navigate away
-    const handleBeforeUnload = () => {
-      const state = useGameStore.getState();
-      saveGame({
-        currencies: state.currencies,
-        upgrades: state.upgrades,
-        prestigeCount: state.prestigeCount,
-      });
-    };
-
+    const handleBeforeUnload = () => doSave();
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
@@ -55,6 +50,8 @@ export function useAutoSave() {
       currencies: state.currencies,
       upgrades: state.upgrades,
       prestigeCount: state.prestigeCount,
+      level: state.level,
+      xp: state.xp,
     });
 
     if (success) {

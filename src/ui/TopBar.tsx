@@ -21,7 +21,6 @@ export function TopBar() {
   const startTimeMs = useGameStore((s) => s.startTimeMs);
   const endTimeMs = useGameStore((s) => s.endTimeMs);
   const flagMode = useGameStore((s) => s.flagMode);
-  const currencies = useGameStore((s) => s.currencies);
   const toggleFlagMode = useGameStore((s) => s.toggleFlagMode);
 
   // live timer -> ticks every second while game is active
@@ -46,59 +45,35 @@ export function TopBar() {
   const remaining = board.totalMines - board.flaggedCount;
 
   return (
-    <div className="w-full max-w-[min(95vw,32rem)] mx-auto mb-3 flex flex-col gap-2">
-      {/* scrap + intel + board info */}
-      <div className="flex items-center justify-between bg-neutral-800/60 rounded px-3 py-1.5 border border-neutral-700/30 text-sm font-mono">
-        <div className="text-amber-400" title="Current scrap">
-          ⚙ {formatNumber(currencies.scrap)} scrap
-        </div>
-        {currencies.intel > 0 && (
-          <div className="text-cyan-400 text-sm" title="Intel (prestige currency)">
-            ⬡ {formatNumber(currencies.intel)}
-          </div>
-        )}
-        <div className="text-neutral-500 text-xs" title="Board size">
-          {board.rows}×{board.cols}
-        </div>
-        <div className="text-neutral-500" title="Lifetime scrap (never resets)">
-          Σ {formatNumber(currencies.lifetimeScrap)}
-        </div>
+    <div className="w-full flex items-center justify-between bg-neutral-800 rounded px-4 py-3 border border-neutral-700/50">
+      <div
+        className="font-mono text-xl text-red-400 min-w-[3.5rem] text-left"
+        title="Remaining mines"
+      >
+        💣 {remaining}
       </div>
 
-      {/* mine count / timer row */}
-      <div className="flex items-center justify-between bg-neutral-800 rounded px-3 py-2 border border-neutral-700/50">
-        <div
-          className="font-mono text-lg text-red-400 min-w-[3rem] text-left"
-          title="Remaining mines"
-        >
-          💣 {remaining}
-        </div>
+      <button
+        type="button"
+        onClick={toggleFlagMode}
+        className={`
+          px-3 py-1.5 text-sm font-mono rounded transition-colors
+          ${
+            flagMode
+              ? "bg-amber-500/90 text-neutral-900"
+              : "bg-neutral-700 text-neutral-400 hover:bg-neutral-600"
+          }
+        `}
+        title="Toggle flag mode (for mobile)"
+      >
+        🚩 {flagMode ? "ON" : "OFF"}
+      </button>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleFlagMode}
-            className={`
-              px-2 py-1 text-xs font-mono rounded transition-colors
-              ${
-                flagMode
-                  ? "bg-amber-500/90 text-neutral-900"
-                  : "bg-neutral-700 text-neutral-400 hover:bg-neutral-600"
-              }
-            `}
-            title="Toggle flag mode (for mobile)"
-          >
-            🚩 {flagMode ? "ON" : "OFF"}
-          </button>
-        </div>
-
-        {/* timer */}
-        <div
-          className="font-mono text-lg text-neutral-300 min-w-[3rem] text-right"
-          title="Elapsed time"
-        >
-          ⏱ {formatTime(elapsed)}
-        </div>
+      <div
+        className="font-mono text-xl text-neutral-300 min-w-[3.5rem] text-right"
+        title="Elapsed time"
+      >
+        ⏱ {formatTime(elapsed)}
       </div>
     </div>
   );

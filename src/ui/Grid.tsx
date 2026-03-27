@@ -12,10 +12,10 @@ export function Grid() {
 
   return (
     <div
-      className="grid gap-0 w-full max-w-[min(95vw,32rem)] mx-auto"
+      className="grid gap-0 w-full max-w-[min(95vw,30rem)] mx-auto"
       style={{
-        // css grid with equal-width columns matching the board's column count.
-        // minmax(0, 1fr) ensures cells shrink evenly on small screens.
+        // css grid with equal-width columns matching the board's column count
+        // minmax(0, 1fr) ensures cells shrink evenly on small screens
         gridTemplateColumns: `repeat(${board.cols}, minmax(0, 1fr))`,
       }}
     >
@@ -25,6 +25,7 @@ export function Grid() {
           cell={cell}
           gameOver={gameOver}
           onReveal={() => {
+            // in flag mode (mobile), taps place flags instead of revealing
             if (flagMode) {
               flag(cell.row, cell.col);
             } else {

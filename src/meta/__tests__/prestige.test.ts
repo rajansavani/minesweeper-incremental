@@ -3,81 +3,75 @@ import { computeIntelGain, computeIntelOnPrestige, performPrestige } from "../pr
 import type { Currencies, UpgradeState } from "../types";
 
 describe("computeIntelGain", () => {
-  it("returns 0 for 0 lifetime scrap", () => {
+  it("returns 0 for 0 scrap", () => {
     expect(computeIntelGain(0)).toBe(0);
   });
 
-  it("returns 0 for negative lifetime scrap", () => {
+  it("returns 0 for negative scrap", () => {
     expect(computeIntelGain(-500)).toBe(0);
   });
 
-  it("returns 10 intel for 1000 lifetime scrap", () => {
-    expect(computeIntelGain(1000)).toBe(10);
+  it("returns 0 below the 800 scrap threshold", () => {
+    expect(computeIntelGain(799)).toBe(0);
   });
 
-  it("returns 22 intel for 5000 lifetime scrap", () => {
-    // floor(10 * sqrt(5)) = floor(22.36) = 22
-    expect(computeIntelGain(5000)).toBe(22);
+  it("returns 1 for exactly 800 scrap (first prestige gate)", () => {
+    // floor(sqrt(800/800)) = floor(1) = 1
+    expect(computeIntelGain(800)).toBe(1);
   });
 
-  it("returns 31 intel for 10000 lifetime scrap", () => {
-    // floor(10 * sqrt(10)) = floor(31.62) = 31
-    expect(computeIntelGain(10000)).toBe(31);
+  it("returns 2 for 3200 scrap", () => {
+    // floor(sqrt(3200/800)) = floor(sqrt(4)) = 2
+    expect(computeIntelGain(3200)).toBe(2);
   });
 
-  it("returns 70 intel for 50000 lifetime scrap", () => {
-    // floor(10 * sqrt(50)) = floor(70.71) = 70
-    expect(computeIntelGain(50000)).toBe(70);
+  it("returns 3 for 7200 scrap", () => {
+    // floor(sqrt(7200/800)) = floor(sqrt(9)) = 3
+    expect(computeIntelGain(7200)).toBe(3);
   });
 
-  it("shows diminishing returns (each intel costs more scrap)", () => {
-    const at1k = computeIntelGain(1000);
-    const at4k = computeIntelGain(4000);
-    const at9k = computeIntelGain(9000);
+  it("returns 10 for 80000 scrap", () => {
+    // floor(sqrt(80000/800)) = floor(sqrt(100)) = 10
+    expect(computeIntelGain(80000)).toBe(10);
+  });
 
-    // 4x the scrap should NOT give 4x the intel
-    expect(at4k).toBeLessThan(at1k * 4);
-    // should still give more tho
-    expect(at4k).toBeGreaterThan(at1k);
-    expect(at9k).toBeGreaterThan(at4k);
+  it("shows diminishing returns (each intel costs more scrap than the last)", () => {
+    const at800 = computeIntelGain(800); // 1
+    const at3200 = computeIntelGain(3200); // 2
+    const at7200 = computeIntelGain(7200); // 3
+    expect(at3200).toBeGreaterThan(at800);
+    expect(at7200).toBeGreaterThan(at3200);
+    // quadrupling scrap only doubles intel (sqrt scaling)
+    expect(computeIntelGain(3200)).toBeLessThan(computeIntelGain(800) * 4);
   });
 });
 
 describe("computeIntelOnPrestige", () => {
-  it("returns full intel gain on first prestige", () => {
-    // first prestige: currentIntel is 0
-    expect(computeIntelOnPrestige(1000, 0)).toBe(10);
+  it("returns intel gain based on current scrap", () => {
+    expect(computeIntelOnPrestige(800)).toBe(1);
+    expect(computeIntelOnPrestige(3200)).toBe(2);
   });
 
-  it("returns only the difference on subsequent prestiges", () => {
-    // already have 10 intel from first prestige at 1000 scrap.
-    // now at 5000 total -> 22 total intel -> gain is 22 - 10 = 12
-    expect(computeIntelOnPrestige(5000, 10)).toBe(12);
+  it("returns 0 below the threshold", () => {
+    expect(computeIntelOnPrestige(799)).toBe(0);
   });
 
-  it("returns 0 if no new intel would be earned", () => {
-    // have 10 intel, lifetime is 1000 -> total would be 10 -> gain is 0
-    expect(computeIntelOnPrestige(1000, 10)).toBe(0);
-  });
-
-  it("never returns negative", () => {
-    // edge case: somehow have more intel than formula suggests
-    expect(computeIntelOnPrestige(100, 50)).toBe(0);
+  it("returns 0 for 0 scrap", () => {
+    expect(computeIntelOnPrestige(0)).toBe(0);
   });
 });
 
 describe("performPrestige", () => {
   const baseCurrencies: Currencies = {
-    scrap: 500,
-    lifetimeScrap: 2000,
+    scrap: 6000,
+    lifetimeScrap: 10000,
     intel: 0,
     totalIntelEarned: 0,
   };
 
   const scrapUpgrades: UpgradeState = {
     scrap_per_reveal: 3,
-    flood_bonus: 2,
-    board_size: 1,
+    win_bonus: 2,
   };
 
   it("resets scrap to 0", () => {
@@ -87,13 +81,18 @@ describe("performPrestige", () => {
 
   it("keeps lifetimeScrap unchanged", () => {
     const result = performPrestige(baseCurrencies, scrapUpgrades, 0);
-    expect(result.currencies.lifetimeScrap).toBe(2000);
+    expect(result.currencies.lifetimeScrap).toBe(10000);
   });
 
-  it("awards intel based on formula", () => {
+  it("awards intel based on current scrap", () => {
     const result = performPrestige(baseCurrencies, scrapUpgrades, 0);
-    // floor(10 * sqrt(2000/1000)) = floor(10 * 1.414) = 14
-    expect(result.currencies.intel).toBe(14);
+    // floor(sqrt(6000/800)) = floor(sqrt(7.5)) = floor(2.739) = 2
+    expect(result.currencies.intel).toBe(2);
+  });
+
+  it("tracks totalIntelEarned", () => {
+    const result = performPrestige(baseCurrencies, scrapUpgrades, 0);
+    expect(result.currencies.totalIntelEarned).toBe(2);
   });
 
   it("increments prestige count", () => {
@@ -104,8 +103,7 @@ describe("performPrestige", () => {
   it("resets all scrap-costed upgrades", () => {
     const result = performPrestige(baseCurrencies, scrapUpgrades, 0);
     expect(result.upgrades.scrap_per_reveal).toBeUndefined();
-    expect(result.upgrades.flood_bonus).toBeUndefined();
-    expect(result.upgrades.board_size).toBeUndefined();
+    expect(result.upgrades.win_bonus).toBeUndefined();
   });
 
   it("keeps intel-costed upgrades", () => {
@@ -120,49 +118,53 @@ describe("performPrestige", () => {
     expect(result.upgrades.scrap_per_reveal).toBeUndefined();
   });
 
-  it("does nothing if intel gain would be 0", () => {
+  it("does nothing if below the 800 scrap threshold", () => {
     const poorCurrencies: Currencies = {
-      scrap: 50,
-      lifetimeScrap: 5,
+      scrap: 500,
+      lifetimeScrap: 5000,
       intel: 0,
       totalIntelEarned: 0,
     };
     const result = performPrestige(poorCurrencies, {}, 0);
-    // no change -> can't prestige for 0 intel
-    expect(result.currencies.scrap).toBe(50);
+    expect(result.currencies.scrap).toBe(500);
     expect(result.prestigeCount).toBe(0);
   });
 
-  it("second prestige gives incremental intel", () => {
-    // first prestige at 2000 lifetime: 14 intel
+  it("two prestiges at same scrap level both give the same intel", () => {
     const first = performPrestige(baseCurrencies, scrapUpgrades, 0);
-    expect(first.currencies.intel).toBe(14);
+    expect(first.currencies.intel).toBe(2);
 
-    // play more, now at 8000 lifetime scrap
-    const afterMore: Currencies = {
-      scrap: 1200,
-      lifetimeScrap: 8000,
+    // reset back to same scrap level
+    const sameScrap: Currencies = {
+      scrap: 6000,
+      lifetimeScrap: 16000,
       intel: first.currencies.intel,
       totalIntelEarned: first.currencies.totalIntelEarned,
     };
-    const second = performPrestige(afterMore, {}, first.prestigeCount);
-    // total at 8000: floor(10 * sqrt(8)) = floor(28.28) = 28
-    // already have 14, so gain is 28 - 14 = 14 more
-    expect(second.currencies.intel).toBe(28);
+    const second = performPrestige(sameScrap, {}, first.prestigeCount);
+    expect(second.currencies.intel).toBe(2 + 2); // gains another 2
     expect(second.prestigeCount).toBe(2);
   });
 
+  it("more scrap = more intel on prestige", () => {
+    const richCurrencies: Currencies = {
+      scrap: 13500,
+      lifetimeScrap: 20000,
+      intel: 0,
+      totalIntelEarned: 0,
+    };
+    const result = performPrestige(richCurrencies, {}, 0);
+    // floor(sqrt(13500/800)) = floor(sqrt(16.875)) = floor(4.107) = 4
+    expect(result.currencies.intel).toBe(4);
+  });
+
   it("applies starting scrap from intel upgrade on prestige", () => {
-    // the supply cache upgrade gives starting scrap
-    // but we verify performPrestige resets scrap to 0 (store adds starting scrap after)
     const upgrades: UpgradeState = {
       scrap_per_reveal: 2,
       intel_starting_scrap: 2,
     };
     const result = performPrestige(baseCurrencies, upgrades, 0);
-    // scrap resets to 0 (store will add starting scrap separately)
     expect(result.currencies.scrap).toBe(0);
-    // intel upgrade persists
     expect(result.upgrades.intel_starting_scrap).toBe(2);
   });
 });

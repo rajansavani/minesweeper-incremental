@@ -2,18 +2,19 @@ import type { Currencies, UpgradeState } from "./types";
 import { UPGRADES } from "./upgrades";
 
 // INTEL FORMULA
-// intel earned = floor(10 * sqrt(lifetimeScrap / 1000))
+// intel earned = floor(sqrt(currentScrap / 800))
+// based on current scrap (not lifetime) — resets each prestige
+// gate: requires at least 800 current scrap to earn any intel
+// 800 = 1, 3200 = 2, 7200 = 3, 12800 = 4, ...
 
-export function computeIntelGain(lifetimeScrap: number): number {
-  if (lifetimeScrap <= 0) return 0;
-  return Math.floor(10 * Math.sqrt(lifetimeScrap / 1000));
+export function computeIntelGain(currentScrap: number): number {
+  if (currentScrap < 800) return 0;
+  return Math.floor(Math.sqrt(currentScrap / 800));
 }
 
 // shows how much intel the player would gain if they prestiged right now
-export function computeIntelOnPrestige(lifetimeScrap: number, totalIntelEarned: number): number {
-  const totalIntel = computeIntelGain(lifetimeScrap);
-  const gain = totalIntel - totalIntelEarned;
-  return Math.max(0, gain);
+export function computeIntelOnPrestige(currentScrap: number): number {
+  return computeIntelGain(currentScrap);
 }
 
 // PRESTIGE RESET
@@ -29,7 +30,7 @@ export function performPrestige(
   upgrades: UpgradeState;
   prestigeCount: number;
 } {
-  const intelGain = computeIntelOnPrestige(currencies.lifetimeScrap, currencies.totalIntelEarned);
+  const intelGain = computeIntelOnPrestige(currencies.scrap);
 
   // can't prestige for 0 intel
   if (intelGain <= 0) {
@@ -51,7 +52,7 @@ export function performPrestige(
     if (def && def.currency === "intel") {
       newUpgrades[id] = level; // keep intel upgrades
     }
-    // scrap upgrdes are wiped by not adding them to newUpgrades
+    // scrap upgrades are wiped by not adding them to newUpgrades
   }
 
   return {

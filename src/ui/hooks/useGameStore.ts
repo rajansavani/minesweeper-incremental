@@ -1,15 +1,15 @@
 import { create } from "zustand";
-import { autoRevealSafeCells } from "../../engine/assist";
 import { createBoard, placeMines } from "../../engine/board";
 import { toggleFlag } from "../../engine/flag";
 import { chordReveal, revealCell } from "../../engine/reveal";
 import type { Board, EngineEvent } from "../../engine/types";
 import { eventBus } from "../../meta/events";
+import { computeXpGain, processXpGain } from "../../meta/levels";
 import { performPrestige } from "../../meta/prestige";
 import { computeScrapReward } from "../../meta/scrap";
 import type { Currencies, RunStats, UpgradeState } from "../../meta/types";
 import { createDefaultRunStats } from "../../meta/types";
-import { BOARD_SIZE_LEVELS, getUpgradeCost, UPGRADES } from "../../meta/upgrades";
+import { getUpgradeCost, UPGRADES } from "../../meta/upgrades";
 import { loadGame } from "../../storage/load";
 import { deleteSave } from "../../storage/save";
 
@@ -26,7 +26,10 @@ interface GameStore {
   currencies: Currencies;
   upgrades: UpgradeState;
   currentRun: RunStats;
+  lastRun: RunStats | null;
   prestigeCount: number;
+  level: number;
+  xp: number;
 
   // actions
   reveal: (row: number, col: number) => void;
@@ -48,11 +51,9 @@ function randomSeed(): string {
   return `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-// looks up the board dimensions for the current board_size upgrade level
-function getBoardConfig(upgrades: UpgradeState) {
-  const level = upgrades.board_size ?? 0;
-  const clamped = Math.min(level, BOARD_SIZE_LEVELS.length - 1);
-  return BOARD_SIZE_LEVELS[clamped];
+// for now in v0.1.1, everyone plays 9x9 beginner board
+function createNewBoard(): Board {
+  return createBoard(9, 9, 10, randomSeed());
 }
 
 // computes starting scrap from the "supply cache" intel upgrade
@@ -126,12 +127,6 @@ function processEvents(
   };
 }
 
-// creates a fresh board based on current upgrade levels
-function createBoardFromUpgrades(upgrades: UpgradeState): Board {
-  const config = getBoardConfig(upgrades);
-  return createBoard(config.rows, config.cols, config.mines, randomSeed());
-}
-
 // tries to load from localStorage, returns defaults if no save exists
 function loadInitialState() {
   const save = loadGame();
@@ -140,12 +135,16 @@ function loadInitialState() {
       currencies: save.currencies,
       upgrades: save.upgrades,
       prestigeCount: save.prestigeCount,
+      level: save.level,
+      xp: save.xp,
     };
   }
   return {
     currencies: { scrap: 0, lifetimeScrap: 0, intel: 0, totalIntelEarned: 0 } as Currencies,
     upgrades: {} as UpgradeState,
     prestigeCount: 0,
+    level: 1,
+    xp: 0,
   };
 }
 
@@ -153,7 +152,7 @@ const initial = loadInitialState();
 
 export const useGameStore = create<GameStore>((set, get) => ({
   // engine state
-  board: createBoardFromUpgrades(initial.upgrades),
+  board: createNewBoard(),
   startTimeMs: null,
   endTimeMs: null,
   flagMode: false,
@@ -162,10 +161,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   currencies: initial.currencies,
   upgrades: initial.upgrades,
   currentRun: createDefaultRunStats(),
+  lastRun: null,
   prestigeCount: initial.prestigeCount,
+  level: initial.level,
+  xp: initial.xp,
 
   reveal: (row, col) => {
-    const { board, currencies, upgrades, currentRun } = get();
+    const { board, upgrades } = get();
     if (board.status !== "playing") return;
 
     let currentBoard = board;
@@ -173,34 +175,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!currentBoard.firstClickDone) {
       currentBoard = placeMines(currentBoard, row, col);
       set({ startTimeMs: Date.now() });
-
-      // apply "starting_reveals" (recon drone) upgrade
-      const startingRevealsLevel = upgrades.starting_reveals ?? 0;
-      if (startingRevealsLevel > 0) {
-        const count = 3 + (startingRevealsLevel - 1) * 2;
-        const autoResult = autoRevealSafeCells(currentBoard, count);
-        currentBoard = autoResult.board;
-
-        // process auto-reveal events for scrap
-        const autoMeta = processEvents(
-          autoResult.events,
-          autoResult.board,
-          currencies,
-          upgrades,
-          currentRun,
-        );
-        // update currencies/run before the player's actual click
-        set({
-          currencies: autoMeta.currencies,
-          currentRun: autoMeta.currentRun,
-        });
-      }
     }
 
     const result = revealCell(currentBoard, row, col);
     const endTimeMs = result.board.status !== "playing" ? Date.now() : get().endTimeMs;
 
-    // re-read currencies / currentRun in case starting reveals updated them
     const meta = processEvents(
       result.events,
       result.board,
@@ -209,12 +188,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().currentRun,
     );
 
-    set({
-      board: result.board,
-      endTimeMs,
-      currencies: meta.currencies,
-      currentRun: meta.currentRun,
-    });
+    // award XP when the game ends
+    if (result.board.status !== "playing") {
+      const xpGained = computeXpGain(meta.currentRun.scrapEarned);
+      const xpResult = processXpGain(get().level, get().xp, xpGained);
+      set({
+        board: result.board,
+        endTimeMs,
+        currencies: meta.currencies,
+        currentRun: meta.currentRun,
+        lastRun: meta.currentRun,
+        level: xpResult.level,
+        xp: xpResult.xp,
+      });
+    } else {
+      set({
+        board: result.board,
+        endTimeMs,
+        currencies: meta.currencies,
+        currentRun: meta.currentRun,
+      });
+    }
   },
 
   flag: (row, col) => {
@@ -241,18 +235,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const meta = processEvents(result.events, result.board, currencies, upgrades, currentRun);
 
-    set({
-      board: result.board,
-      endTimeMs,
-      currencies: meta.currencies,
-      currentRun: meta.currentRun,
-    });
+    // award XP when game ends via chord
+    if (result.board.status !== "playing") {
+      const xpGained = computeXpGain(meta.currentRun.scrapEarned);
+      const xpResult = processXpGain(get().level, get().xp, xpGained);
+      set({
+        board: result.board,
+        endTimeMs,
+        currencies: meta.currencies,
+        currentRun: meta.currentRun,
+        lastRun: meta.currentRun,
+        level: xpResult.level,
+        xp: xpResult.xp,
+      });
+    } else {
+      set({
+        board: result.board,
+        endTimeMs,
+        currencies: meta.currencies,
+        currentRun: meta.currentRun,
+      });
+    }
   },
 
   newGame: () => {
-    const { upgrades } = get();
     set({
-      board: createBoardFromUpgrades(upgrades),
+      board: createNewBoard(),
       startTimeMs: null,
       endTimeMs: null,
       flagMode: false,
@@ -298,10 +306,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { currencies, upgrades, prestigeCount } = get();
     const result = performPrestige(currencies, upgrades, prestigeCount);
 
-    // if prestige didn't happen, do nothing
     if (result.prestigeCount === prestigeCount) return;
 
-    // apply starting scrap from supply cache intel upgrade
     const startingScrap = getStartingScrap(result.upgrades);
     result.currencies.scrap = startingScrap;
 
@@ -309,26 +315,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currencies: result.currencies,
       upgrades: result.upgrades,
       prestigeCount: result.prestigeCount,
-      // start a fresh board with the new upgrade set
-      board: createBoardFromUpgrades(result.upgrades),
+      board: createNewBoard(),
       startTimeMs: null,
       endTimeMs: null,
       flagMode: false,
       currentRun: createDefaultRunStats(),
+      lastRun: null,
     });
   },
 
   hardReset: () => {
     deleteSave();
     set({
-      board: createBoardFromUpgrades({}),
+      board: createNewBoard(),
       startTimeMs: null,
       endTimeMs: null,
       flagMode: false,
       currencies: { scrap: 0, lifetimeScrap: 0, intel: 0, totalIntelEarned: 0 },
       upgrades: {},
       currentRun: createDefaultRunStats(),
+      lastRun: null,
       prestigeCount: 0,
+      level: 1,
+      xp: 0,
     });
   },
 }));

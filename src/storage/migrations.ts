@@ -1,7 +1,13 @@
 import type { Migration } from "./types";
 
 export const migrations: Migration[] = [
-  // future migrations go here
+  // v0.1.1: add level and xp fields
+  (save) => ({
+    ...save,
+    version: 2,
+    level: 1,
+    xp: 0,
+  }),
 ];
 
 // applies all necessary migrations to bring a save up to the target version

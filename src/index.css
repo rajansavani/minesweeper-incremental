@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* reserve scrollbar gutter so layout doesn't shift when scrollbar appears */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* prevent iOS from zooming on double-tap of grid cells */
 button {
   touch-action: manipulation;

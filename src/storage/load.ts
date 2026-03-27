@@ -51,6 +51,8 @@ function validateSave(data: Record<string, unknown>): SaveFile {
     },
     upgrades: (data.upgrades as Record<string, number>) ?? {},
     prestigeCount: (data.prestigeCount as number) ?? 0,
+    level: (data.level as number) ?? 1,
+    xp: (data.xp as number) ?? 0,
     settings: {
       showTimer: (settings.showTimer as boolean) ?? true,
       showMineCount: (settings.showMineCount as boolean) ?? true,

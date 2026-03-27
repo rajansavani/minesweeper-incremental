@@ -8,17 +8,28 @@ export function RunSummary() {
   const status = useGameStore((s) => s.board.status);
   const board = useGameStore((s) => s.board);
   const currentRun = useGameStore((s) => s.currentRun);
+  const lastRun = useGameStore((s) => s.lastRun);
   const newGame = useGameStore((s) => s.newGame);
   const startTimeMs = useGameStore((s) => s.startTimeMs);
   const endTimeMs = useGameStore((s) => s.endTimeMs);
 
-  if (status === "playing") return null;
+  // show current run stats if game just ended, otherwise show last run
+  const gameJustEnded = status !== "playing";
+  const run = gameJustEnded ? currentRun : lastRun;
 
-  const isWin = status === "won";
+  if (!run) {
+    return (
+      <div className="w-full text-center text-neutral-500 text-sm font-mono py-4">
+        complete a board to see stats
+      </div>
+    );
+  }
+
+  const isWin = run.won === true;
 
   // compute time taken
   let timeStr = "—";
-  if (startTimeMs && endTimeMs) {
+  if (gameJustEnded && startTimeMs && endTimeMs) {
     const totalSeconds = Math.floor((endTimeMs - startTimeMs) / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -27,50 +38,51 @@ export function RunSummary() {
 
   // board completion percentage
   const totalSafe = board.rows * board.cols - board.totalMines;
-  const pct = totalSafe > 0 ? Math.round((currentRun.cellsRevealed / totalSafe) * 100) : 0;
+  const pct = totalSafe > 0 ? Math.round((run.cellsRevealed / totalSafe) * 100) : 0;
 
   return (
-    <div
-      className={`
-        mt-4 px-5 py-4 rounded font-mono text-center max-w-xs w-full
-        ${isWin ? "bg-green-900/50 border border-green-600/40" : ""}
-        ${!isWin ? "bg-red-900/50 border border-red-600/40" : ""}
-      `}
-    >
+    <div className="w-full">
       {/* header */}
-      <p className={`text-lg font-bold mb-3 ${isWin ? "text-green-300" : "text-red-300"}`}>
-        {isWin ? "🎉 board cleared!" : "💥 mine hit!"}
-      </p>
+      {gameJustEnded && (
+        <div
+          className={`text-center font-mono font-bold text-lg mb-2 ${isWin ? "text-green-400" : "text-red-400"}`}
+        >
+          {isWin ? "🎉 board cleared!" : "💥 mine hit!"}
+        </div>
+      )}
 
-      {/* stats grid */}
-      <div className="text-left text-sm space-y-1.5 mb-4">
-        <StatRow label="time" value={timeStr} />
-        <StatRow label="board" value={`${board.rows}×${board.cols} (${board.totalMines} mines)`} />
-        <StatRow label="cleared" value={`${currentRun.cellsRevealed} / ${totalSafe} (${pct}%)`} />
-        <StatRow label="flags placed" value={String(currentRun.flagsPlaced)} />
+      {!gameJustEnded && <div className="text-sm font-mono text-neutral-500 mb-2">last run</div>}
 
-        {/* scrap earned — highlighted */}
+      {/* stats */}
+      <div className="bg-neutral-800 rounded border border-neutral-700/50 px-4 py-3 text-base font-mono space-y-2">
+        {gameJustEnded && <StatRow label="time" value={timeStr} />}
+        <StatRow label="cleared" value={`${run.cellsRevealed} / ${totalSafe} (${pct}%)`} />
+        <StatRow label="flags" value={String(run.flagsPlaced)} />
         <div className="pt-1 border-t border-neutral-700/30">
           <div className="flex justify-between text-amber-400 font-bold">
-            <span>scrap earned</span>
-            <span>+{formatNumber(currentRun.scrapEarned)} ⚙</span>
+            <span>scrap</span>
+            <span>+{formatNumber(run.scrapEarned)} ⚙</span>
           </div>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => newGame()}
-        className={`
-          w-full px-4 py-2 rounded text-sm font-bold transition-colors
-          ${
-            isWin
-              ? "bg-green-700/60 hover:bg-green-600/60 text-green-100"
-              : "bg-neutral-700 hover:bg-neutral-600 text-neutral-100"
-          }
-        `}
-      >
-        next board →
-      </button>
+
+      {/* next board button — only when game just ended */}
+      {gameJustEnded && (
+        <button
+          type="button"
+          onClick={() => newGame()}
+          className={`
+            w-full mt-2 px-4 py-3 rounded text-base font-mono font-bold transition-colors
+            ${
+              isWin
+                ? "bg-green-700/60 hover:bg-green-600/60 text-green-100"
+                : "bg-neutral-700 hover:bg-neutral-600 text-neutral-100"
+            }
+          `}
+        >
+          next board →
+        </button>
+      )}
     </div>
   );
 }

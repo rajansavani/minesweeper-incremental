@@ -21,6 +21,7 @@ export interface UpgradeDefinition {
   };
   currency: "scrap" | "intel"; // which currency to spend
   requiresPrestige?: number; // minimum prestige count to unlock
+  requiredLevel?: number; // minimum player level to show this upgrade in the shop
   icon?: string; // optional art path for upgrade icon
 }
 
@@ -59,6 +60,8 @@ export interface MetaState {
   cooldowns: CooldownAbility[];
   currentRun: RunStats;
   prestigeCount: number; // how many times the player has prestiged
+  level: number; // player level
+  xp: number; // current XP towards next level
   settings: {
     showTimer: boolean;
     showMineCount: boolean;
@@ -79,6 +82,8 @@ export function createDefaultMetaState(): MetaState {
     cooldowns: [],
     currentRun: createDefaultRunStats(),
     prestigeCount: 0,
+    level: 1,
+    xp: 0,
     settings: {
       showTimer: true,
       showMineCount: true,

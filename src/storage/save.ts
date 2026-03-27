@@ -6,6 +6,8 @@ interface SaveableState {
   currencies: Currencies;
   upgrades: UpgradeState;
   prestigeCount: number;
+  level: number;
+  xp: number;
   settings?: {
     showTimer: boolean;
     showMineCount: boolean;
@@ -24,6 +26,8 @@ export function saveGame(state: SaveableState): boolean {
       currencies: state.currencies,
       upgrades: state.upgrades,
       prestigeCount: state.prestigeCount,
+      level: state.level,
+      xp: state.xp,
       settings: state.settings ?? {
         showTimer: true,
         showMineCount: true,

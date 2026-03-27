@@ -2,7 +2,7 @@ import type { Currencies, UpgradeState } from "../meta/types";
 
 // current save version: increment this whenever the save schema changes
 // add a corresponding migration function in migrations.ts
-export const CURRENT_SAVE_VERSION = 1;
+export const CURRENT_SAVE_VERSION = 2;
 
 // the key used in localStorage
 export const SAVE_KEY = "minesweeper-incremental-save";
@@ -15,6 +15,8 @@ export interface SaveFile {
   currencies: Currencies;
   upgrades: UpgradeState;
   prestigeCount: number;
+  level: number;
+  xp: number;
   settings: {
     showTimer: boolean;
     showMineCount: boolean;

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { saveGame } from "../storage/save";
 import { useGameStore } from "./hooks/useGameStore";
 
@@ -12,11 +11,11 @@ export function Settings() {
       currencies: state.currencies,
       upgrades: state.upgrades,
       prestigeCount: state.prestigeCount,
+      level: state.level,
+      xp: state.xp,
     });
     alert("saved!");
   };
-
-  const [isOpen, setIsOpen] = useState(false);
 
   // export save as copyable JSON string
   const handleExport = () => {
@@ -39,41 +38,18 @@ export function Settings() {
     if (!input) return;
 
     try {
-      JSON.parse(input); // validate it's valid JSON
+      JSON.parse(input);
       localStorage.setItem("minesweeper-incremental-save", input);
-      window.location.reload(); // reload to apply the imported save
+      window.location.reload();
     } catch {
       alert("invalid save data.");
     }
   };
 
-  if (!isOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="mt-6 text-xs font-mono text-neutral-500 hover:text-neutral-300 transition-colors"
-      >
-        ⚙ settings
-      </button>
-    );
-  }
-
   return (
-    <div className="w-full max-w-[min(95vw,32rem)] mx-auto mt-6">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-mono text-neutral-400 tracking-wide">⚙ settings</h2>
-        <button
-          type="button"
-          onClick={() => setIsOpen(false)}
-          className="text-xs font-mono text-neutral-500 hover:text-neutral-300"
-        >
-          close ✕
-        </button>
-      </div>
-
+    <div className="w-full">
       <div className="bg-neutral-800 rounded border border-neutral-700/50 divide-y divide-neutral-700/30">
-        {/* save controls */}
+        {/* save */}
         <div className="px-4 py-3 flex items-center justify-between">
           <span className="text-sm font-mono text-neutral-300">save game</span>
           <button

@@ -13,10 +13,7 @@ export function PrestigePanel() {
 
   const [confirming, setConfirming] = useState(false);
 
-  const potentialIntel = computeIntelOnPrestige(
-    currencies.lifetimeScrap,
-    currencies.totalIntelEarned,
-  );
+  const potentialIntel = computeIntelOnPrestige(currencies.scrap);
   const canPrestige = potentialIntel > 0;
 
   // filter to only intel-costed upgrades
@@ -50,8 +47,8 @@ export function PrestigePanel() {
         {/* explanation text */}
         <p className="text-xs text-neutral-400 mb-3">
           prestige resets your scrap and scrap upgrades, but awards{" "}
-          <span className="text-cyan-400">intel</span> based on your lifetime scrap. now you can
-          play the same game again but faster this time yay!
+          <span className="text-cyan-400">intel</span> — a permanent currency for powerful upgrades
+          that persist forever.
         </p>
 
         {/* potential gain + button */}

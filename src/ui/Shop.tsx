@@ -5,18 +5,24 @@ import { formatNumber } from "./TopBar";
 export function Shop() {
   const currencies = useGameStore((s) => s.currencies);
   const upgrades = useGameStore((s) => s.upgrades);
+  const level = useGameStore((s) => s.level);
   const buyUpgrade = useGameStore((s) => s.buyUpgrade);
 
+  // filter to scrap upgrades that the player has unlocked
+  const visibleUpgrades = UPGRADES.filter((def) => {
+    if (def.currency !== "scrap") return false;
+    if (def.requiredLevel && level < def.requiredLevel) return false;
+    return true;
+  });
+
+  if (visibleUpgrades.length === 0) return null;
+
   return (
-    <div className="w-full max-w-[min(95vw,32rem)] mx-auto mt-4">
+    <div className="w-full">
       <h2 className="text-sm font-mono text-neutral-400 mb-2 tracking-wide">⚙ upgrades</h2>
 
       <div className="grid gap-2">
-        {UPGRADES.filter((def) => {
-          // only show scrap-costed upgrades here
-          // intel upgrades are shown in the PrestigePanel
-          return def.currency === "scrap";
-        }).map((def) => {
+        {visibleUpgrades.map((def) => {
           const currentLevel = upgrades[def.id] ?? 0;
           const isMaxed = currentLevel >= def.maxLevel;
           const cost = isMaxed ? 0 : getUpgradeCost(def, currentLevel, upgrades);
