@@ -1,4 +1,5 @@
 import { Grid } from "./Grid";
+import { useAutoSave } from "./hooks/useAutoSave";
 import { useGameStore } from "./hooks/useGameStore";
 import { PrestigePanel } from "./PrestigePanel";
 import { Shop } from "./Shop";
@@ -10,6 +11,8 @@ export default function App() {
   const newGame = useGameStore((s) => s.newGame);
   const prestigeCount = useGameStore((s) => s.prestigeCount);
   const lifetimeScrap = useGameStore((s) => s.currencies.lifetimeScrap);
+  const hardReset = useGameStore((s) => s.hardReset);
+  const { showSaved, manualSave } = useAutoSave();
 
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100 flex flex-col items-center px-4 py-6">
@@ -21,6 +24,11 @@ export default function App() {
 
       <TopBar />
       <Grid />
+
+      {/* save indicator*/}
+      {showSaved && (
+        <div className="mt-2 text-xs font-mono text-green-400 animate-pulse">✓ saved</div>
+      )}
 
       {/* win/loss banner */}
       {status !== "playing" && (
@@ -60,7 +68,29 @@ export default function App() {
       {/* show prestige panel after first prestige or when player has enough scrap */}
       {(prestigeCount > 0 || lifetimeScrap >= 500) && <PrestigePanel />}
 
-      <p className="mt-6 text-xs text-neutral-500 font-mono text-center">
+      {/* save + reset controls */}
+      <div className="mt-6 flex items-center gap-4">
+        <button
+          type="button"
+          onClick={manualSave}
+          className="text-xs font-mono text-neutral-400 hover:text-neutral-200 transition-colors"
+        >
+          💾 save now
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm("this will erase ALL progress. are you sure?")) {
+              hardReset();
+            }
+          }}
+          className="text-xs font-mono text-neutral-600 hover:text-red-400 transition-colors"
+        >
+          ⚠ hard reset
+        </button>
+      </div>
+
+      <p className="mt-4 text-xs text-neutral-500 font-mono text-center">
         left-click to reveal · right-click to flag · 🚩 toggle for mobile
       </p>
     </div>

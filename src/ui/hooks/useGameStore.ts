@@ -10,6 +10,8 @@ import { computeScrapReward } from "../../meta/scrap";
 import type { Currencies, RunStats, UpgradeState } from "../../meta/types";
 import { createDefaultRunStats } from "../../meta/types";
 import { BOARD_SIZE_LEVELS, getUpgradeCost, UPGRADES } from "../../meta/upgrades";
+import { loadGame } from "../../storage/load";
+import { deleteSave } from "../../storage/save";
 
 // store is the bridge between the pure engine functions and the react UI
 // holds all game state and exposes actions that call engine functions, update state, and emit events for the meta layer
@@ -34,6 +36,7 @@ interface GameStore {
   toggleFlagMode: () => void;
   buyUpgrade: (upgradeId: string) => void;
   prestige: () => void;
+  hardReset: () => void;
 }
 
 // generate a random seed for each new game
@@ -129,18 +132,37 @@ function createBoardFromUpgrades(upgrades: UpgradeState): Board {
   return createBoard(config.rows, config.cols, config.mines, randomSeed());
 }
 
+// tries to load from localStorage, returns defaults if no save exists
+function loadInitialState() {
+  const save = loadGame();
+  if (save) {
+    return {
+      currencies: save.currencies,
+      upgrades: save.upgrades,
+      prestigeCount: save.prestigeCount,
+    };
+  }
+  return {
+    currencies: { scrap: 0, lifetimeScrap: 0, intel: 0, totalIntelEarned: 0 } as Currencies,
+    upgrades: {} as UpgradeState,
+    prestigeCount: 0,
+  };
+}
+
+const initial = loadInitialState();
+
 export const useGameStore = create<GameStore>((set, get) => ({
   // engine state
-  board: createBoardFromUpgrades({}),
+  board: createBoardFromUpgrades(initial.upgrades),
   startTimeMs: null,
   endTimeMs: null,
   flagMode: false,
 
   // meta state
-  currencies: { scrap: 0, lifetimeScrap: 0, intel: 0, totalIntelEarned: 0 },
-  upgrades: {},
+  currencies: initial.currencies,
+  upgrades: initial.upgrades,
   currentRun: createDefaultRunStats(),
-  prestigeCount: 0,
+  prestigeCount: initial.prestigeCount,
 
   reveal: (row, col) => {
     const { board, currencies, upgrades, currentRun } = get();
@@ -293,6 +315,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
       endTimeMs: null,
       flagMode: false,
       currentRun: createDefaultRunStats(),
+    });
+  },
+
+  hardReset: () => {
+    deleteSave();
+    set({
+      board: createBoardFromUpgrades({}),
+      startTimeMs: null,
+      endTimeMs: null,
+      flagMode: false,
+      currencies: { scrap: 0, lifetimeScrap: 0, intel: 0, totalIntelEarned: 0 },
+      upgrades: {},
+      currentRun: createDefaultRunStats(),
+      prestigeCount: 0,
     });
   },
 }));
