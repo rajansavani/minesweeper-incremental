@@ -66,6 +66,14 @@ export interface MetaState {
     showTimer: boolean;
     showMineCount: boolean;
     enableTooltips: boolean;
+    // "left-click": left-click a revealed number to chord
+    // "middle-click": middle-click any cell to chord
+    // "both-click": left+right simultaneously to chord
+    chordMode: "left-click" | "middle-click" | "both-click";
+    // "flag": spacebar always flags/unflags
+    // "chord": spacebar always chords
+    // "flag-or-chord": spacebar flags if hidden/flagged, chords if revealed number
+    spacebarBehavior: "off" | "flag" | "chord" | "flag-or-chord";
   };
 }
 
@@ -88,6 +96,8 @@ export function createDefaultMetaState(): MetaState {
       showTimer: true,
       showMineCount: true,
       enableTooltips: true,
+      chordMode: "left-click" as const,
+      spacebarBehavior: "flag" as const,
     },
   };
 }

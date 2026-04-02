@@ -8,6 +8,19 @@ export const migrations: Migration[] = [
     level: 1,
     xp: 0,
   }),
+  // v0.1.2: add chordMode and spacebarBehavior to settings
+  (save) => {
+    const settings = (save.settings ?? {}) as Record<string, unknown>;
+    return {
+      ...save,
+      version: 3,
+      settings: {
+        ...settings,
+        chordMode: settings.chordMode ?? "left-click",
+        spacebarBehavior: settings.spacebarBehavior ?? "flag",
+      },
+    };
+  },
 ];
 
 // applies all necessary migrations to bring a save up to the target version

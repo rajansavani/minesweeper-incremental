@@ -57,6 +57,10 @@ function validateSave(data: Record<string, unknown>): SaveFile {
       showTimer: (settings.showTimer as boolean) ?? true,
       showMineCount: (settings.showMineCount as boolean) ?? true,
       enableTooltips: (settings.enableTooltips as boolean) ?? true,
+      chordMode:
+        (settings.chordMode as "left-click" | "middle-click" | "both-click") ?? "left-click",
+      spacebarBehavior:
+        (settings.spacebarBehavior as "off" | "flag" | "chord" | "flag-or-chord") ?? "flag",
     },
   };
 }

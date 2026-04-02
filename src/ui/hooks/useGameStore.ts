@@ -31,6 +31,14 @@ interface GameStore {
   level: number;
   xp: number;
 
+  settings: {
+    showTimer: boolean;
+    showMineCount: boolean;
+    enableTooltips: boolean;
+    chordMode: "left-click" | "middle-click" | "both-click";
+    spacebarBehavior: "off" | "flag" | "chord" | "flag-or-chord";
+  };
+
   // actions
   reveal: (row: number, col: number) => void;
   flag: (row: number, col: number) => void;
@@ -40,6 +48,7 @@ interface GameStore {
   buyUpgrade: (upgradeId: string) => void;
   prestige: () => void;
   hardReset: () => void;
+  updateSettings: (patch: Partial<GameStore["settings"]>) => void;
 }
 
 // generate a random seed for each new game
@@ -128,6 +137,14 @@ function processEvents(
 }
 
 // tries to load from localStorage, returns defaults if no save exists
+const DEFAULT_SETTINGS = {
+  showTimer: true,
+  showMineCount: true,
+  enableTooltips: true,
+  chordMode: "left-click" as const,
+  spacebarBehavior: "flag" as const,
+};
+
 function loadInitialState() {
   const save = loadGame();
   if (save) {
@@ -137,6 +154,7 @@ function loadInitialState() {
       prestigeCount: save.prestigeCount,
       level: save.level,
       xp: save.xp,
+      settings: { ...DEFAULT_SETTINGS, ...save.settings },
     };
   }
   return {
@@ -145,6 +163,7 @@ function loadInitialState() {
     prestigeCount: 0,
     level: 1,
     xp: 0,
+    settings: DEFAULT_SETTINGS,
   };
 }
 
@@ -165,6 +184,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   prestigeCount: initial.prestigeCount,
   level: initial.level,
   xp: initial.xp,
+  settings: initial.settings,
 
   reveal: (row, col) => {
     const { board, upgrades } = get();
@@ -339,5 +359,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       level: 1,
       xp: 0,
     });
+  },
+
+  updateSettings: (patch) => {
+    set((state) => ({ settings: { ...state.settings, ...patch } }));
   },
 }));

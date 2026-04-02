@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { Cell as CellType } from "../engine/types";
 
 // color map for adjacency numbers
@@ -14,35 +15,63 @@ const NUMBER_COLORS: Record<number, string> = {
 
 interface CellProps {
   cell: CellType;
-  gameOver: boolean; // true when status is "won" or "lost"
+  gameOver: boolean;
+  chordMode: "left-click" | "middle-click" | "both-click";
   onReveal: () => void;
   onFlag: () => void;
   onChord: () => void;
+  onHoverChange: (hovered: boolean) => void;
 }
 
-export function Cell({ cell, gameOver, onReveal, onFlag, onChord }: CellProps) {
+export function Cell({
+  cell,
+  gameOver,
+  chordMode,
+  onReveal,
+  onFlag,
+  onChord,
+  onHoverChange,
+}: CellProps) {
+  // tracks whether chord already fired this mouse gesture (prevents flag from also firing)
+  const chordFiredRef = useRef(false);
+
+  const isRevealedNumber = cell.state === "revealed" && cell.adjacentMines > 0;
+
   const handleClick = () => {
     if (gameOver) return;
-    // left-click on a revealed numbered cell → chord reveal
-    if (cell.state === "revealed" && cell.adjacentMines > 0) {
+    if (chordMode === "left-click" && isRevealedNumber) {
       onChord();
       return;
     }
+    // revealed cells with no number: nothing to do
+    if (cell.state === "revealed") return;
     onReveal();
   };
 
-  // right-click places/removes a flag.
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     if (gameOver) return;
+    // in both-click mode, suppress flag if chord already fired this gesture
+    if (chordMode === "both-click" && chordFiredRef.current) {
+      chordFiredRef.current = false;
+      return;
+    }
     onFlag();
   };
 
-  // middle-click also triggers chord reveal
   const handleMouseDown = (e: React.MouseEvent) => {
+    // middle click: chord in middle-click mode
     if (e.button === 1) {
       e.preventDefault();
       if (gameOver) return;
+      if (chordMode === "middle-click") onChord();
+      return;
+    }
+
+    // both-click chord: fires when left+right are simultaneously down (e.buttons === 3)
+    if (chordMode === "both-click" && e.buttons === 3) {
+      if (gameOver) return;
+      chordFiredRef.current = true;
       onChord();
     }
   };
@@ -55,7 +84,6 @@ export function Cell({ cell, gameOver, onReveal, onFlag, onChord }: CellProps) {
     content = "🚩";
     cellStyle = "bg-neutral-700 hover:bg-neutral-600 cursor-pointer";
   } else if (cell.state === "hidden") {
-    // on game over, reveal unflagged mines
     if (gameOver && cell.isMine) {
       content = "💣";
       cellStyle = "bg-neutral-800";
@@ -66,7 +94,6 @@ export function Cell({ cell, gameOver, onReveal, onFlag, onChord }: CellProps) {
   } else {
     // revealed
     if (cell.isMine) {
-      // the mine the player clicked (caused the loss)
       content = "💥";
       cellStyle = "bg-red-900/60";
     } else if (cell.adjacentMines > 0) {
@@ -77,7 +104,6 @@ export function Cell({ cell, gameOver, onReveal, onFlag, onChord }: CellProps) {
       );
       cellStyle = "bg-neutral-800/80";
     } else {
-      // 0-cell: empty revealed space
       content = null;
       cellStyle = "bg-neutral-800/50";
     }
@@ -89,6 +115,11 @@ export function Cell({ cell, gameOver, onReveal, onFlag, onChord }: CellProps) {
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onMouseDown={handleMouseDown}
+      onMouseEnter={() => onHoverChange(true)}
+      onMouseLeave={() => onHoverChange(false)}
+      onKeyDown={(e) => {
+        if (e.code === "Space") e.preventDefault();
+      }}
       className={`
         aspect-square flex items-center justify-center
         text-base font-mono select-none

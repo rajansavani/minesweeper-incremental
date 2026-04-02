@@ -1,8 +1,44 @@
 import { saveGame } from "../storage/save";
 import { useGameStore } from "./hooks/useGameStore";
 
+function SettingSelect<T extends string>({
+  label,
+  description,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  description?: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="px-4 py-3 flex items-center justify-between gap-4">
+      <div className="min-w-0">
+        <span className="text-sm font-mono text-neutral-300">{label}</span>
+        {description && <p className="text-xs text-neutral-500 mt-0.5">{description}</p>}
+      </div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+        className="shrink-0 bg-neutral-700 text-neutral-200 text-xs font-mono rounded px-2 py-1 border border-neutral-600 cursor-pointer"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export function Settings() {
   const hardReset = useGameStore((s) => s.hardReset);
+  const settings = useGameStore((s) => s.settings);
+  const updateSettings = useGameStore((s) => s.updateSettings);
 
   // manual save that reads current state directly
   const handleSave = () => {
@@ -13,6 +49,7 @@ export function Settings() {
       prestigeCount: state.prestigeCount,
       level: state.level,
       xp: state.xp,
+      settings: state.settings,
     });
     alert("saved!");
   };
@@ -47,7 +84,38 @@ export function Settings() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full flex flex-col gap-4">
+      {/* controls */}
+      <div className="bg-neutral-800 rounded border border-neutral-700/50 divide-y divide-neutral-700/30">
+        <div className="px-4 py-2">
+          <span className="text-xs font-mono text-neutral-500 tracking-wide">controls</span>
+        </div>
+        <SettingSelect
+          label="chord mode"
+          description="which click triggers chord reveal on a number"
+          value={settings.chordMode}
+          options={[
+            { value: "left-click", label: "left click" },
+            { value: "middle-click", label: "middle click" },
+            { value: "both-click", label: "left + right" },
+          ]}
+          onChange={(v) => updateSettings({ chordMode: v })}
+        />
+        <SettingSelect
+          label="spacebar"
+          description="what spacebar does while hovering a cell"
+          value={settings.spacebarBehavior}
+          options={[
+            { value: "off", label: "off" },
+            { value: "flag", label: "flag / unflag" },
+            { value: "chord", label: "chord" },
+            { value: "flag-or-chord", label: "flag or chord" },
+          ]}
+          onChange={(v) => updateSettings({ spacebarBehavior: v })}
+        />
+      </div>
+
+      {/* save / reset */}
       <div className="bg-neutral-800 rounded border border-neutral-700/50 divide-y divide-neutral-700/30">
         {/* save */}
         <div className="px-4 py-3 flex items-center justify-between">

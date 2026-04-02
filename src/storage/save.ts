@@ -12,6 +12,8 @@ interface SaveableState {
     showTimer: boolean;
     showMineCount: boolean;
     enableTooltips: boolean;
+    chordMode: "left-click" | "middle-click" | "both-click";
+    spacebarBehavior: "off" | "flag" | "chord" | "flag-or-chord";
   };
 }
 
@@ -32,6 +34,8 @@ export function saveGame(state: SaveableState): boolean {
         showTimer: true,
         showMineCount: true,
         enableTooltips: true,
+        chordMode: "left-click" as const,
+        spacebarBehavior: "flag" as const,
       },
     };
 

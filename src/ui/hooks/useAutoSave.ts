@@ -20,6 +20,7 @@ export function useAutoSave() {
         prestigeCount: state.prestigeCount,
         level: state.level,
         xp: state.xp,
+        settings: state.settings,
       });
     };
 
